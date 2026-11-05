@@ -89,6 +89,20 @@ textarea { min-height: 64px; resize: vertical; }
 .list { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .list li { border: 1.5px solid var(--line); border-radius: 12px; padding: 8px 12px; font-size: 15px; }
 .chip { display: inline-block; font-size: 13px; border-radius: 99px; padding: 1px 10px; background: var(--ts); border: 1.5px solid var(--tc); margin-top: 4px; }
+.hintbox { background: #FFFBEA; border: 2px solid #FFE58A; border-radius: 14px; padding: 10px 14px; display: flex; flex-direction: column; gap: 8px; }
+.hintbox .hrow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.hintbox .hbtn { font-family: var(--display); font-size: 17px; border: 0; border-radius: 12px; padding: 7px 14px; cursor: pointer; background: var(--mark); color: #1E2A4A; }
+.hintbox .hbtn:disabled { opacity: .5; cursor: default; }
+.hintbox ol { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 4px; }
+.hintbox li { line-height: 1.55; }
+.hintbox .hnote { font-size: 13px; color: var(--muted); }
+.dots { letter-spacing: 1px; font-size: 13px; }
+.dots .off { opacity: .25; filter: grayscale(1); }
+.badge-big { display: inline-flex; flex-direction: column; align-items: center; gap: 4px; background: #FFFBEA; border: 2.5px solid var(--mark); border-radius: 20px; padding: 14px 26px; }
+.badge-big .ic { font-size: 56px; line-height: 1; }
+.badge-big .bn { font-family: var(--display); font-size: 26px; }
+@keyframes popIn { from { transform: scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: no-preference) { .badge-big { animation: popIn .45s cubic-bezier(.2,1.4,.4,1); } .seg.on { transition: background .2s; } }
 .done { text-align: center; align-items: center; padding: 34px 18px; }
 .done .big { font-size: 60px; line-height: 1; }
 @media (max-width: 520px) { h1 { font-size: 24px; } .tab .n { font-size: 16px; } .m-head { font-size: 20px; } .m-hero { flex-direction: column; align-items: flex-start; } .m-pencil { display: none; } }
@@ -216,6 +230,16 @@ textarea { min-height: 64px; resize: vertical; }
 #teacher .seg.trap:hover { background: var(--mark); }
 #teacher .tab { display: inline-block; }
 
+#teacher .revbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+#teacher .keylist li.hid { background: var(--bg); border-style: dashed; cursor: pointer; color: var(--muted); }
+#teacher .keylist li.hid .n { background: var(--line); color: var(--muted); }
+#teacher .keylist li.new { animation: tpop .4s cubic-bezier(.2,1.4,.4,1); }
+#teacher .mat .seg.trap.new { animation: tpop .4s cubic-bezier(.2,1.4,.4,1); display: inline; }
+@keyframes tpop { from { transform: scale(.85); opacity: .2; } to { transform: none; opacity: 1; } }
+#teacher .bdg { font-size: 13px; white-space: nowrap; }
+#teacher .hintpill { display: inline-block; font-size: 12.5px; background: #FFFBEA; border: 1.5px solid #FFE58A; border-radius: 99px; padding: 0 8px; }
+#teacher .drafthead { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+#teacher input[type="checkbox"] { width: auto; padding: 0; }
 .admin { position: absolute; top: 14px; right: 14px; font-size: 13px; padding: 5px 10px; }
 #start { position: relative; }
 </style>
@@ -247,12 +271,17 @@ textarea { min-height: 64px; resize: vertical; }
     <div class="hello"><h1>🔍 수사 중</h1><span class="who" id="who"></span></div>
     <div class="guide">① 수상한 부분을 <b>눌러요</b> → ② <b>판단 방법</b>을 골라요 → ③ 다 했으면 <b>선생님께 제출</b>!<br>함정을 찾으면 1점, 판단 방법까지 맞으면 1점 더! (자료 하나에 최대 <span id="maxm"></span>군데까지 표시할 수 있어요)</div>
     <div class="tabs" role="tablist" id="tabs"></div>
+    <div class="hintbox" id="hintBox">
+      <div class="hrow"><b>💡 막히면 힌트!</b><button class="hbtn" id="hintBtn">힌트 보기</button><span class="hnote" id="hintNote"></span></div>
+      <ol id="hintList" hidden></ol>
+    </div>
     <div class="mat" id="mat"></div>
   </div>
 
   <!-- 완료 -->
   <section id="done" class="card done" hidden>
-    <div class="big">🎉</div>
+    <div class="big" id="doneIcon">🎉</div>
+    <div class="badge-big" id="badgeBig" hidden><span class="ic" id="badgeIc"></span><span class="bn" id="badgeName"></span></div>
     <h1>제출 완료!</h1>
     <p id="doneMsg" style="margin:0">선생님께 수사 기록을 보냈어요. 수고했어요, 명탐정!</p>
     <div class="row" style="justify-content:center"><button class="btn ghost" id="again">고쳐서 다시 제출하기</button></div>
@@ -310,9 +339,9 @@ textarea { min-height: 64px; resize: vertical; }
     <div id="v-res" class="grid2" style="margin-top:14px">
       <div class="stats" id="stats"></div>
       <section class="card">
-        <div class="row"><h2>학생별 결과</h2><span class="muted" id="ruleText"></span></div>
+        <div class="row"><h2>학생별 결과</h2><span class="muted" id="ruleText"></span><span style="flex:1"></span><button class="btn ghost" id="fillDrafts">✍️ 빈 교사 의견 모두 초안 채우기</button></div>
         <div class="tblwrap"><table>
-          <thead><tr><th>번호</th><th class="l">이름</th><th>제출</th><th>㉮ 신문</th><th>㉯ 동영상</th><th>㉰ 광고</th><th>총점(30)</th><th>찾은 함정</th><th>방법까지</th><th>자동 수준</th><th>확정 수준</th></tr></thead>
+          <thead><tr><th>번호</th><th class="l">이름</th><th>제출</th><th>㉮ 신문</th><th>㉯ 동영상</th><th>㉰ 광고</th><th>총점(30)</th><th>찾은 함정</th><th>방법까지</th><th>힌트</th><th>배지</th><th>자동 수준</th><th>확정 수준</th></tr></thead>
           <tbody id="tbody"></tbody>
         </table></div>
         <p class="muted" id="emptyMsg" style="margin:0">아직 제출한 학생이 없어요. 학생들이 제출하면 '새로고침'을 눌러 주세요.</p>
@@ -341,7 +370,7 @@ textarea { min-height: 64px; resize: vertical; }
 
 <script>
 // ===== 선생님이 바꿀 곳: Apps Script 웹앱 주소(…/exec)를 따옴표 안에 붙여 넣으세요 =====
-const API_URL = 'https://script.google.com/macros/s/AKfycbxbwueXkxKZbIZwaCvAbuN5kw5_RG7ERnEnQiGOBOvaKmebwtEq4We85YDdT1-0RewZ/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbyvunpUgVDIi4B1zjoDkfe52gCnWLOCSJG8gtoPMapsanukqZva23IuGi0l9_30AWN-/exec';
 // ==========================================================================================
 (function () {
   if (!/^https:\/\/script\.google\.com\/.+\/exec/.test(API_URL)) return;
@@ -363,11 +392,12 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbxbwueXkxKZbIZwaCvAbuN5
 </script>
 <script>
 let DATA = null;
-let S = { num: '', name: '', cur: 'news', marks: { news: {}, video: {}, ad: {} } };
+let S = { num: '', name: '', cur: 'news', marks: { news: {}, video: {}, ad: {} }, hints: { news: 0, video: 0, ad: 0 } };
 const KEY = 'suspect-squad-draft';
 const $ = (id) => document.getElementById(id);
 function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
 try { const raw = localStorage.getItem(KEY); if (raw) S = Object.assign(S, JSON.parse(raw)); } catch (e) {}
+if (!S.hints) S.hints = { news: 0, video: 0, ad: 0 };
 
 const HAS_GAS = typeof google !== 'undefined' && google.script && google.script.run;
 const NO_GAS_MSG = '아직 서버 주소가 설정되지 않았어요. 선생님: index.html 맨 위 API_URL에 Apps Script 웹앱 주소(…/exec)를 넣어 주세요.';
@@ -398,7 +428,7 @@ $('go').addEventListener('click', () => {
   if (!HAS_GAS) { $('startErr').textContent = NO_GAS_MSG; return; }
   if (!DATA) { $('startErr').textContent = '자료를 불러오는 중이에요. 잠시 후 다시 눌러 주세요.'; loadData(); return; }
   if (!name) { $('startErr').textContent = '이름을 써 주세요.'; return; }
-  if (S.name && (S.name !== name || String(S.num) !== $('num').value)) S.marks = { news: {}, video: {}, ad: {} };
+  if (S.name && (S.name !== name || String(S.num) !== $('num').value)) { S.marks = { news: {}, video: {}, ad: {} }; S.hints = { news: 0, video: 0, ad: 0 }; }
   S.num = $('num').value; S.name = name; save();
   $('start').hidden = true; $('main').hidden = false; $('bottom').hidden = false;
   render();
@@ -411,10 +441,15 @@ function render() {
   $('who').textContent = S.num + '번 ' + S.name;
   document.querySelectorAll('#tabs .tab').forEach(t => {
     t.setAttribute('aria-selected', String(t.dataset.m === S.cur));
-    t.querySelector('.c').textContent = '표시 ' + count(t.dataset.m) + '군데';
+    const c = t.querySelector('.c'); const k = count(t.dataset.m); c.textContent = '';
+    const dots = document.createElement('span'); dots.className = 'dots';
+    for (let i = 0; i < 5; i++) { const d = document.createElement('span'); d.textContent = '🔍'; if (i >= k) d.className = 'off'; dots.append(d); }
+    c.append(dots); if (k > 5) c.append(' +' + (k - 5));
+    c.setAttribute('aria-label', '표시 ' + k + '군데');
   });
   const box = $('mat');
   box.innerHTML = matOf(S.cur).html;
+  renderHints();
   const order = Object.keys(S.marks[S.cur]);
   box.querySelectorAll('.seg').forEach(el => {
     const sid = el.dataset.s;
@@ -484,14 +519,18 @@ $('cfYes').addEventListener('click', () => {
     .withSuccessHandler(r => {
       btn.disabled = false; btn.textContent = '제출하기';
       $('confirmBg').hidden = true; $('main').hidden = true; $('bottom').hidden = true; $('done').hidden = false;
-      if (r && r.score) $('doneMsg').textContent = '찾은 함정 ' + r.score.found + '개, 점수 ' + r.score.total + '점! 수고했어요, 명탐정!';
+      $('badgeBig').hidden = true; $('doneIcon').hidden = false;
+      if (r && r.score) {
+        $('doneMsg').textContent = '찾은 함정 ' + r.score.found + '개, 점수 ' + r.score.total + '점! 수고했어요!';
+        if (r.score.badge) { $('badgeIc').textContent = r.score.badge.icon; $('badgeName').textContent = r.score.badge.name; $('badgeBig').hidden = false; $('doneIcon').hidden = true; }
+      }
       window.scrollTo(0, 0);
     })
     .withFailureHandler(e => {
       btn.disabled = false; btn.textContent = '제출하기';
       $('cfWarn').textContent = '제출하지 못했어요. 인터넷 연결을 확인하고 다시 눌러 주세요. (' + (e && e.message ? e.message : '') + ')';
     })
-    .submitAnswers({ num: S.num, name: S.name, marks });
+    .submitAnswers({ num: S.num, name: S.name, marks, hints: S.hints });
 });
 $('adminBtn').addEventListener('click', () => { $('adminBox').hidden = !$('adminBox').hidden; if (!$('adminBox').hidden) $('adminPw').focus(); });
 function adminLogin() {
@@ -507,6 +546,18 @@ $('adminGo').addEventListener('click', adminLogin);
 $('adminPw').addEventListener('keydown', e => { if (e.key === 'Enter') adminLogin(); });
 $('again').addEventListener('click', () => { $('done').hidden = true; $('main').hidden = false; $('bottom').hidden = false; render(); });
 
+function renderHints() {
+  if (!DATA || !DATA.hints) { $('hintBox').hidden = true; return; }
+  const list = DATA.hints[S.cur] || [], used = Math.min(S.hints[S.cur] || 0, list.length);
+  const ol = $('hintList'); ol.textContent = '';
+  list.slice(0, used).forEach(h => { const li = document.createElement('li'); li.textContent = h; ol.append(li); });
+  ol.hidden = used === 0;
+  $('hintBtn').disabled = used >= list.length;
+  $('hintBtn').textContent = used >= list.length ? '힌트를 모두 봤어요' : (used ? '다음 힌트' : '힌트 보기');
+  $('hintNote').textContent = '(' + used + '/' + list.length + ') 힌트를 본 횟수는 선생님께 함께 전달돼요.';
+}
+$('hintBtn').addEventListener('click', () => { S.hints[S.cur] = (S.hints[S.cur] || 0) + 1; save(); renderHints(); });
+
 function loadData() {
   if (!HAS_GAS) { $('startErr').textContent = NO_GAS_MSG; return; }
   $('startErr').textContent = '자료를 불러오는 중…';
@@ -519,7 +570,7 @@ loadData();
 <script>
 (function () {
 
-let PW = '', D = null, selNum = null, revMat = 'news';
+let PW = '', D = null, selNum = null, revMat = 'news', revShown = { news: 0, video: 0, ad: 0 };
 let pend = { ans: {}, stu: {} }; // 저장 전 수정 내용
 const $ = (id) => document.getElementById(id);
 const MAT_IDS = ['news', 'video', 'ad'];
@@ -540,6 +591,7 @@ document.querySelectorAll('.top .tab').forEach(t => t.addEventListener('click', 
 
 function load(d) {
   D = d;
+  $('fillDrafts').textContent = '✍️ 빈 교사 의견 모두 초안 채우기';
   D.matById = {}; D.mats.forEach(m => D.matById[m.id] = m);
   D.byNum = {};
   D.students.forEach(s => { D.byNum[s['번호']] = { s, a: [] }; });
@@ -567,7 +619,14 @@ function summary(num) {
   const ps = pend.stu[num] || {};
   r.level = ps.level !== undefined ? ps.level : g.s['확정 성취수준'];
   r.comment = ps.comment !== undefined ? ps.comment : g.s['교사 의견'];
+  r.hintText = g.s['힌트 사용'] || '';
+  r.hintSum = Number(g.s['힌트 합계']) || 0;
+  r.badge = badgeOf(r.total);
   return r;
+}
+function badgeOf(total) {
+  const bs = D.badges || [{ min: 0, name: '수습 탐정', icon: '🥉' }];
+  return bs.find(b => total >= b.min) || bs[bs.length - 1];
 }
 function nums() { return Object.keys(D.byNum).map(Number).sort((a, b) => a - b); }
 
@@ -589,7 +648,7 @@ function renderTable() {
     const g = D.byNum[n], r = summary(n);
     const tr = el('tr'); if (n === selNum) tr.className = 'sel';
     const changed = g.a.some(a => pend.ans[a['답안ID']]) || pend.stu[n];
-    const cells = [n, g.s['이름'], g.s['제출 시각'], r.pts.news, r.pts.video, r.pts.ad, r.total, r.found, r.ok];
+    const cells = [n, g.s['이름'], g.s['제출 시각'], r.pts.news, r.pts.video, r.pts.ad, r.total, r.found, r.ok, r.hintSum ? r.hintSum + '회' : '—', r.badge.icon + ' ' + r.badge.name];
     cells.forEach((c, i) => { const td = el('td', i === 1 ? 'l' : '', String(c)); if (i === 1 && changed) td.append(el('span', 'dirty', ' ●')); tr.append(td); });
     const a = el('td'); a.append(el('span', 'lv lv-' + r.auto, r.auto)); tr.append(a);
     const f = el('td'); if (r.level) f.append(el('span', 'lv lv-' + r.level, r.level)); else f.append(el('span', 'muted', '—')); tr.append(f);
@@ -612,7 +671,8 @@ function renderDetail() {
   box.hidden = false; box.textContent = '';
   const g = D.byNum[selNum], r = summary(selNum);
   const head = el('div', 'row');
-  head.append(el('h2', '', `${selNum}번 ${g.s['이름']}`), el('span', 'muted', `제출 ${g.s['제출 시각']} · 총점 ${r.total}점 · 찾은 함정 ${r.found}개 · 방법까지 ${r.ok}개`));
+  head.append(el('h2', '', `${selNum}번 ${g.s['이름']}`), el('span', 'bdg', r.badge.icon + ' ' + r.badge.name), el('span', 'muted', `제출 ${g.s['제출 시각']} · 총점 ${r.total}점 · 찾은 함정 ${r.found}개 · 방법까지 ${r.ok}개`));
+  head.append(el('span', 'hintpill', r.hintSum ? `💡 힌트 ${r.hintSum}회 (${r.hintText})` : '💡 힌트 사용 안 함'));
   const sp = el('span'); sp.style.flex = '1'; head.append(sp);
   const del = el('button', 'btn danger', '이 학생 제출 삭제'); head.append(del);
   box.append(head);
@@ -661,12 +721,46 @@ function renderDetail() {
   ls.value = r.level || ''; ls.style.marginTop = '6px';
   ls.addEventListener('change', () => { pend.stu[selNum] = Object.assign({}, pend.stu[selNum], { level: ls.value }); renderTable(); renderStats(); renderSave(); });
   left.append(ls);
-  const right = el('div'); right.append(el('h3', '', '교사 의견 (서술·관찰 평가)'));
+  const right = el('div');
+  const dh = el('div', 'drafthead'); dh.append(el('h3', '', '교사 의견 (서술·관찰 평가)'));
+  const db = el('button', 'btn ghost', '✍️ 의견 초안 만들기'); dh.append(db); right.append(dh);
+  db.addEventListener('click', () => { ta.value = draftOf(selNum); pend.stu[selNum] = Object.assign({}, pend.stu[selNum], { comment: ta.value }); renderSave(); renderTable(); });
   const ta = el('textarea'); ta.value = r.comment || ''; ta.placeholder = '예) 신문 기사의 출처와 글쓴이를 확인하여 신뢰성을 판단함.'; ta.style.marginTop = '6px';
   ta.addEventListener('input', () => { pend.stu[selNum] = Object.assign({}, pend.stu[selNum], { comment: ta.value }); renderSave(); });
   right.append(ta);
   jb.append(left, right); box.append(jb);
 }
+
+// ----- 교사 의견 자동 초안 -----
+const PHRASE = { news: ['출처와 사진의 신뢰성', '글쓴이', '다른 매체의 보도 여부'], video: ['제작자의 전문성', '주장의 근거', '과장된 표현'], ad: ['과장된 표현의 근거', '지나치게 좋은 조건', '구입 후기의 숨은 의도'] };
+const MATNAME = { news: '신문 기사', video: '동영상', ad: '인터넷 광고' };
+function josa(w, a, b) { const c = w.charCodeAt(w.length - 1); if (c < 0xAC00 || c > 0xD7A3) return w + b; return w + ((c - 0xAC00) % 28 ? a : b); }
+function joinKo(arr) { if (arr.length === 1) return arr[0]; const last = arr[arr.length - 1]; const front = arr.slice(0, -1); front[front.length - 1] = josa(front[front.length - 1], '과', '와'); return front.join(', ') + ' ' + last; }
+function draftOf(num) {
+  const g = D.byNum[num], r = summary(num), level = r.level || r.auto;
+  const used = { news: new Set(), video: new Set(), ad: new Set() };
+  g.a.forEach(a => { if (eff(a).m) { const i = D.methods[a['자료']].findIndex(x => x.q === a['고른 판단 방법']); if (i >= 0) used[a['자료']].add(i); } });
+  const order = ['news', 'ad', 'video'];
+  const main = order.filter(m => used[m].size && D.rule.mats.indexOf(m) >= 0);
+  const pick = main.length ? main : order.filter(m => used[m].size);
+  const clauses = pick.map(m => `${MATNAME[m]}에서 ${josa(joinKo([...used[m]].sort().map(i => PHRASE[m][i])), '을', '를')}`);
+  const hint = r.hintSum > 0;
+  if (level === '상') return `${hint ? '힌트를 참고하며 ' : ''}${clauses.join(', ')} 확인하는 등 여러 판단 기준을 활용하여 매체 자료의 신뢰성을 타당하게 평가함.`;
+  if (level === '중') {
+    const weak = D.rule.mats.filter(m => r.okBy[m] < D.rule.mid).map(m => MATNAME[m]);
+    const base = clauses.length ? `${hint ? '힌트를 참고하여 ' : ''}${clauses.slice(0, 2).join(', ')} 확인하여 매체 자료의 신뢰성을 판단함.` : '매체 자료가 믿을 만한지 판단하는 기준을 알고 자료의 신뢰성을 판단함.';
+    return base + (weak.length ? ` ${weak.join('와 ')}에서도 판단 기준을 적용해 보는 연습이 필요함.` : '');
+  }
+  const help = hint ? '힌트의 도움을 받아' : '교사의 도움을 받아';
+  if (clauses.length) return `매체 자료의 신뢰성을 판단하는 기준을 이해하는 데 어려움이 있으나, ${help} ${clauses[0]} 확인하여 자료의 신뢰성을 판단함.`;
+  return `${hint ? '힌트를 활용하였으나 ' : ''}매체 자료의 신뢰성을 판단하는 기준을 이해하는 데 어려움이 있어, 도움을 받아 자료의 출처와 근거를 확인하는 연습이 필요함.`;
+}
+$('fillDrafts').addEventListener('click', () => {
+  let n = 0;
+  nums().forEach(num => { const r = summary(num); if (!String(r.comment || '').trim()) { pend.stu[num] = Object.assign({}, pend.stu[num], { comment: draftOf(num) }); n++; } });
+  $('fillDrafts').textContent = n ? `✍️ ${n}명 초안을 채웠어요 — 아래 '저장'을 눌러 주세요` : '✍️ 빈 의견이 없어요';
+  renderAll();
+});
 
 function dirtyCount() { return Object.keys(pend.ans).length + Object.keys(pend.stu).length; }
 function renderSave() { const n = dirtyCount(); $('saveBar').hidden = !n; $('dirtyText').textContent = `저장하지 않은 수정 ${n}건`; }
@@ -685,16 +779,36 @@ $('saveBtn').addEventListener('click', () => {
 function alertBar(e) { $('saveBar').hidden = false; $('dirtyText').textContent = '저장하지 못했어요: ' + ((e && e.message) || '다시 시도해 주세요.'); }
 
 // ----- 정답 공개 -----
-function renderReveal() {
+function renderReveal(fresh) {
   const tabs = $('revTabs'); tabs.textContent = '';
   D.mats.forEach(m => { const t = el('button', 'tab', `${m.mark} ${m.name}`); t.setAttribute('aria-selected', String(m.id === revMat)); t.addEventListener('click', () => { revMat = m.id; renderReveal(); }); tabs.append(t); });
   const body = $('revBody'); body.textContent = '';
-  const mat = el('div', 'mat'); mat.innerHTML = D.matById[revMat].html;
   const ids = Object.keys(D.key[revMat]);
-  mat.querySelectorAll('.seg').forEach(s => { const i = ids.indexOf(s.dataset.s); if (i >= 0) { s.classList.add('trap'); const n = el('span', 'num', String(i + 1)); s.prepend(n); } });
+  const shown = Math.min(revShown[revMat] || 0, ids.length);
+  const bar = el('div', 'revbar');
+  const next = el('button', 'btn yellow', shown >= ids.length ? '모두 공개했어요' : `다음 함정 공개 ▶ (${shown}/${ids.length})`);
+  next.disabled = shown >= ids.length;
+  next.addEventListener('click', () => { revShown[revMat] = shown + 1; renderReveal(shown); });
+  const all = el('button', 'btn ghost', '모두 공개'); all.addEventListener('click', () => { revShown[revMat] = ids.length; renderReveal(); });
+  const hide = el('button', 'btn ghost', '다시 가리기'); hide.addEventListener('click', () => { revShown[revMat] = 0; renderReveal(); });
+  bar.append(next, all, hide);
+  const mat = el('div', 'mat'); mat.innerHTML = D.matById[revMat].html;
+  mat.querySelectorAll('.seg').forEach(sg => { const i = ids.indexOf(sg.dataset.s); if (i >= 0 && i < shown) { sg.classList.add('trap'); if (i === fresh) sg.classList.add('new'); sg.prepend(el('span', 'num', String(i + 1))); } });
+  const right = el('div'); right.append(bar);
   const ul = el('ul', 'keylist');
-  ids.forEach((sid, i) => { const li = el('li'); li.append(el('span', 'n', String(i + 1)), el('span', '', D.notes[sid]), el('span', 'm', '판단 방법: ' + D.key[revMat][sid].map(k => D.methods[revMat][k].q).join(' / '))); ul.append(li); });
-  body.append(mat, ul);
+  ids.forEach((sid, i) => {
+    const li = el('li');
+    if (i < shown) {
+      if (i === fresh) li.classList.add('new');
+      li.append(el('span', 'n', String(i + 1)), el('span', '', D.notes[sid]), el('span', 'm', '판단 방법: ' + D.key[revMat][sid].map(k => D.methods[revMat][k].q).join(' / ')));
+    } else {
+      li.classList.add('hid'); li.append(el('span', 'n', String(i + 1)), el('span', '', '❓ 어떤 함정일까요? (눌러서 공개)'));
+      li.addEventListener('click', () => { revShown[revMat] = i + 1; renderReveal(i); });
+    }
+    ul.append(li);
+  });
+  right.append(ul);
+  body.append(mat, right);
 }
 $('bigText').addEventListener('change', () => $('revBody').classList.toggle('big', $('bigText').checked));
 
